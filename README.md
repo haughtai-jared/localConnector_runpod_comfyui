@@ -17,6 +17,11 @@ and change the node mapping.
 > weights, installs ComfyUI, or deploys an endpoint. You bring a working endpoint and
 > its id; this project is only the local half.
 
+![Sample output rendered by the bundled workflow on a Runpod serverless endpoint](docs/sample-output.png)
+
+<sub>1344×768, 8 steps, ~23 s of GPU execution time — rendered by this connector from a
+one-line prompt against a live endpoint.</sub>
+
 ---
 
 ## The core idea: node mapping
@@ -334,10 +339,14 @@ control.
   that and returns a warning rather than silently doing nothing. To enable it, add a
   second `CLIPTextEncode` and wire it to the sampler's `negative` input.
 - **Model filenames must exist on the worker** (see
-  [Requirements](#requirements)): `krea2/krea2_turbo_int8_convrot.safetensors`,
-  `krea2/qwen3vl_4b_fp8_scaled.safetensors`, `qwen_image_vae.safetensors`, and the
-  realism LoRA. Edit the JSON, or install the same models in your endpoint image.
-- **Use forward slashes** in model paths; the worker runs on Linux.
+  [Requirements](#requirements)): `krea2_turbo_int8_convrot.safetensors`,
+  `qwen3vl_4b_fp8_scaled.safetensors`, `qwen_image_vae.safetensors`, and
+  `realism_engine_krea2_v3.1.safetensors`. These are the flat names the reference
+  endpoint exposes. If your worker keeps models in subfolders, the JSON must use the
+  exact list entry ComfyUI reports — the worker rejects a path it does not list
+  (`value_not_in_list`), and the connector shows you that error verbatim.
+- **Use forward slashes** in model paths (`krea2/unet.safetensors`, not
+  `krea2\unet.safetensors`); the worker runs on Linux.
 - Any `LoadImage` node can be fed from local files — `workflow.attach_images()` embeds
   the bytes and rewrites the node to the matching placeholder name. The bundled
   text-to-image graph has no `LoadImage`, so that path is unused but ready.
