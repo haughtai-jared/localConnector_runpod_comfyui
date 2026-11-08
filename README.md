@@ -60,7 +60,7 @@ a caller can just send a prompt and still get a sane image.
 
 ```mermaid
 flowchart LR
-    A[MCP client<br/>Claude Desktop, Cursor, VS Code] -->|stdio or HTTP| B[Local connector]
+    A[Haught Studio<br/>Connector] -->|stdio or HTTP| B[Local connector]
     O[.env<br/>RUNPOD_API_KEY<br/>RUNPOD_ENDPOINT_ID] --> B
     W[workflows/*.json<br/>ComfyUI API export] --> B
     B -->|1. patch nodes| B
@@ -129,7 +129,7 @@ runpod-comfyui-mcp --check
 
 ```
 {
-  "config": { "runpod_endpoint_id": "abc123def456", "runpod_api_key": "rpa_…cdef", ... },
+  "config": { "runpod_endpoint_id": "abc123def456", "runpod_api_key": "rpa_...cdef", ... },
   "workflow": { "valid": true, "nodes": { "sampler": "53", "save": "29", ... } },
   "endpoint": { "reachable": true, "health": { "workers": { "idle": 1, "running": 0 } } }
 }
@@ -138,11 +138,11 @@ runpod-comfyui-mcp --check
 Then run the server:
 
 ```bash
-# stdio — the normal mode for desktop MCP clients
-runpod-comfyui-mcp
-
-# or HTTP + OpenAI-compatible shim on http://127.0.0.1:8600
+# HTTP — how Haught Studio reaches the Connector
 runpod-comfyui-mcp --transport streamable-http
+
+# or stdio, if Haught Studio launches the connector itself
+runpod-comfyui-mcp
 ```
 
 ---
@@ -162,7 +162,7 @@ client that injects secrets overrides the file.
 | `RUNPOD_POLL_INTERVAL_S` | | `2` | Delay between status polls. |
 | `RUNPOD_OUTPUT_DIR` | | `./output` | Where rendered files are written. |
 | `WORKFLOW_PATH` | | `workflows/krea2_turbo_t2i.json` | ComfyUI API-format workflow. |
-| `MCP_TRANSPORT` | | `stdio` | `stdio` or `streamable-http`. |
+| `MCP_TRANSPORT` | | `stdio` | `stdio` or `streamable-http` (Haught Studio over HTTP). |
 | `MCP_HOST` / `MCP_PORT` | | `127.0.0.1` / `8600` | HTTP bind address (HTTP mode only). |
 | `MCP_PUBLIC_BASE_URL` | | — | Public URL used to build media links behind a tunnel. |
 | `LOG_LEVEL` | | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR`. |
@@ -171,41 +171,26 @@ Precedence: CLI flag → environment variable → `.env` → built-in default.
 
 ---
 
-## Connect a client
+## Connect Haught Studio
 
-### Claude Desktop
+Haught Studio talks to this process as a **Connector**. Run the connector, then point
+the Connector at it. See [examples/haughtstudio_connector.json](examples/haughtstudio_connector.json)
+for a starting point.
 
-`claude_desktop_config.json` — see [examples/claude_desktop_config.json](examples/claude_desktop_config.json).
+### HTTP (recommended)
 
-```json
-{
-  "mcpServers": {
-    "runpod-comfyui": {
-      "command": "C:/path/to/localConnector_runpod_comfyui/.venv/Scripts/python.exe",
-      "args": ["-m", "runpod_comfyui_mcp"],
-      "env": {
-        "RUNPOD_API_KEY": "your-key",
-        "RUNPOD_ENDPOINT_ID": "your-endpoint-id"
-      }
-    }
-  }
-}
+```bash
+runpod-comfyui-mcp --transport streamable-http --port 8600
 ```
 
-The connector reads `.env` from its working directory, so you can omit `env` and keep
-the secrets in `.env` instead.
+| Setting | Value |
+|---|---|
+| URL | `http://127.0.0.1:8600/mcp` |
+| Transport | streamable HTTP, JSON responses |
+| Model id | `runpod-krea2-turbo` |
 
-### VS Code
-
-`.vscode/mcp.json` — see [examples/vscode_mcp.json](examples/vscode_mcp.json).
-
-### Any MCP client over HTTP
-
-```
-POST http://127.0.0.1:8600/mcp        # streamable HTTP, JSON responses
-```
-
-### OpenAI-compatible clients
+The same server also exposes `/v1/models` and `/v1/chat/completions`, which is the shape
+Haught Studio uses for a simple prompt-in / image-back connector:
 
 ```bash
 curl -s http://127.0.0.1:8600/v1/chat/completions \
@@ -214,8 +199,19 @@ curl -s http://127.0.0.1:8600/v1/chat/completions \
         {"role":"user","content":"a red fox in fresh snow, golden hour, 35mm photo"}]}'
 ```
 
-The reply is an OpenAI-shaped envelope whose `message.images[0]` is the base64 image
-and whose content lists links to `/media/<file>`.
+The reply carries the image in `message.images[0]` (base64) and lists links to
+`/media/<file>` in the message content.
+
+### stdio
+
+If Haught Studio starts the connector as a child process instead:
+
+```bash
+.venv/bin/python -m runpod_comfyui_mcp
+```
+
+The connector reads `.env` from its working directory, so the Runpod secrets can live
+there rather than in Haught Studio's connector settings.
 
 ---
 
@@ -322,10 +318,10 @@ def generate_image(prompt: str, ..., denoise: float | None = None) -> dict:
     return generate(prompt=prompt, ..., denoise=denoise)
 ```
 
-Add the matching clamp in `generate()` and the field to the OpenAI shim's `allowed`
-tuple if you want HTTP clients to reach it too. Every change is recorded in the
-`workflow.patches` block of the response, so a caller can see exactly what was applied
-and what was silently refused.
+Add the matching clamp in `generate()` and the field to the chat route's `allowed`
+tuple if you want Haught Studio to reach it through `/v1/chat/completions` too. Every
+change is recorded in the `workflow.patches` block of the response, so a caller can see
+exactly what was applied and what was silently refused.
 
 **A node input left unmapped is not a bug** — it just keeps the template's value. Map
 only what the model should be allowed to change; everything else stays under your
@@ -367,14 +363,14 @@ This is the contract used by `runpod-workers/worker-comfyui`. Set `output_type` 
 
 ```
 ├── .env.example                  # every setting, documented, no secrets
-├── examples/                     # client configuration snippets
+├── examples/                     # Haught Studio connector configuration
 ├── src/runpod_comfyui_mcp/
 │   ├── cli.py                    # argument parsing, --check, transport selection
 │   ├── config.py                 # env/.env loading, validation, secret masking
 │   ├── runpod.py                 # /run, /status, /cancel, /health with retries
 │   ├── workflow.py               # node resolution + parameter patching
 │   ├── outputs.py                # base64 / S3 result decoding and safe filenames
-│   └── server.py                 # MCP tools, HTTP routes, OpenAI shim
+│   └── server.py                 # MCP tools, HTTP routes, chat route
 ├── tests/                        # offline tests; no Runpod account needed
 └── workflows/krea2_turbo_t2i.json
 ```
@@ -418,7 +414,7 @@ test drives the real entry point as a subprocess.
   only way it is rendered.
 - HTTP mode binds `127.0.0.1` by default. If you expose it through a tunnel, put
   authentication in front of it: the `/media` route serves whatever is in the output
-  folder, and the OpenAI shim spends real GPU money.
+  folder, and every generation call spends real GPU money.
 - `cancel_job` and `generate_image` accept ids and values from the model; both are
   validated and the pure functions under `src/` never touch the network except through
   `runpod.py` and `outputs.download()` (which refuses anything but `http`/`https`).

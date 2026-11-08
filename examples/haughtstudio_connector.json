@@ -1,0 +1,12 @@
+{
+  "name": "runpod-comfyui",
+  "label": "Runpod ComfyUI (Krea2 Turbo)",
+  "description": "Renders images with a ComfyUI workflow executed on a Runpod serverless endpoint.",
+  "transport": "streamable-http",
+  "url": "http://127.0.0.1:8600/mcp",
+  "model": "runpod-krea2-turbo",
+  "env": {
+    "RUNPOD_API_KEY": "set-in-your-own-.env-not-here",
+    "RUNPOD_ENDPOINT_ID": "your-endpoint-id"
+  }
+}

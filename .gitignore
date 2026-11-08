@@ -22,8 +22,7 @@ htmlcov/
 output/
 
 # Editors / OS
-.vscode/*
-!.vscode/mcp.json
+.vscode/
 .idea/
 .DS_Store
 Thumbs.db

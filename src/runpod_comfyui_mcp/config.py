@@ -1,8 +1,8 @@
 """Configuration for the local connector.
 
 Everything the server needs is read from the environment, with ``.env`` used only as
-a fallback. Real environment variables always win, which is what you want when a
-client (Claude Desktop, VS Code, a container) injects the secrets itself.
+a fallback. Real environment variables always win, which is what you want when
+Haught Studio (or a container) injects the secrets itself.
 
 Nothing in this module ever logs or serialises the API key in full.
 """

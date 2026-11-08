@@ -2,9 +2,9 @@
 
 Two transports are supported, chosen at startup:
 
-* ``stdio`` — what Claude Desktop, Cursor, VS Code and most local hosts expect.
-* ``streamable-http`` — serves MCP at ``/mcp`` and adds the OpenAI-compatible
-  shim (``/v1/chat/completions``), ``/media`` and a small usage page.
+* ``streamable-http`` — how Haught Studio reaches the connector: MCP at ``/mcp``,
+  plus the chat route (``/v1/chat/completions``), ``/media`` and a small usage page.
+* ``stdio`` — for a harness that launches the connector as a child process.
 """
 
 from __future__ import annotations
@@ -141,7 +141,7 @@ def _image_entries(saved: list[SavedFile], settings: Settings | None) -> list[di
     return entries
 
 
-# ── core operation (shared by the tool and the OpenAI shim) ──────────────────
+# ── core operation (shared by the tool and the chat route) ──────────────────
 def generate(
     *,
     prompt: str,
@@ -561,8 +561,8 @@ async def index_route(_request: Request) -> Response:
 <pre>POST http://127.0.0.1:{settings.port if settings else 8600}/mcp
 {{"jsonrpc":"2.0","id":1,"method":"tools/list"}}</pre>
 
-<h2>OpenAI-compatible</h2>
-<pre>curl -s http://127.0.0.1:{settings.port if settings else 8600}/v1/chat/completions \\
+<h2>Connect from Haught Studio</h2>
+<pre>POST http://127.0.0.1:{settings.port if settings else 8600}/v1/chat/completions \\
   -H 'Content-Type: application/json' \\
   -d '{{"model":"{MODEL_ID}","messages":[{{"role":"user","content":"a red fox in fresh snow, golden hour"}}]}}'</pre>
 

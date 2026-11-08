@@ -158,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     logger.info("MCP HTTP        : http://%s:%s/mcp", host, port)
-    logger.info("OpenAI shim     : http://%s:%s/v1/chat/completions", host, port)
+    logger.info("Chat route      : http://%s:%s/v1/chat/completions", host, port)
     logger.info("Usage page      : http://%s:%s/", host, port)
     server.run(
         transport="streamable-http",

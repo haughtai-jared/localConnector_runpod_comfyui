@@ -1,4 +1,4 @@
-"""HTTP surface: health, models, media and the OpenAI-compatible shim."""
+"""HTTP surface: health, models, media and the Haught Studio chat route."""
 
 from __future__ import annotations
 
@@ -104,7 +104,7 @@ def test_chat_completions_requires_a_prompt(client):
     assert response.json()["error"]["code"] == "missing_prompt"
 
 
-def test_chat_completions_returns_an_openai_envelope(client, tmp_path, monkeypatch):
+def test_chat_completions_returns_a_chat_envelope(client, tmp_path, monkeypatch):
     srv.configure(
         Settings(
             api_key="k",
